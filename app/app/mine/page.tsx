@@ -157,17 +157,17 @@ function getLevelVisual(level: number) {
   if (level >= 5) {
     return {
       tile: "border-pink-300/60 bg-gradient-to-br from-pink-400/30 via-fuchsia-400/25 to-purple-500/35 shadow-[0_0_40px_rgba(244,114,182,0.42)]",
-      iconSize: "text-5xl",
+      iconSize: "text-4xl sm:text-5xl",
       badge: "bg-gradient-to-r from-amber-300 via-pink-300 to-fuchsia-400 text-black",
       ring: true,
       sparkles: 4,
-      scale: "scale-110",
+      scale: "scale-105 sm:scale-110",
     };
   }
   if (level === 4) {
     return {
       tile: "border-pink-300/50 bg-gradient-to-br from-pink-400/24 via-fuchsia-400/18 to-purple-500/20 shadow-[0_0_30px_rgba(244,114,182,0.34)]",
-      iconSize: "text-5xl",
+      iconSize: "text-4xl sm:text-5xl",
       badge: "bg-pink-300 text-black",
       ring: true,
       sparkles: 3,
@@ -177,7 +177,7 @@ function getLevelVisual(level: number) {
   if (level === 3) {
     return {
       tile: "border-pink-300/40 bg-pink-400/18 shadow-[0_0_22px_rgba(244,114,182,0.26)]",
-      iconSize: "text-4xl",
+      iconSize: "text-3xl sm:text-4xl",
       badge: "bg-fuchsia-300 text-black",
       ring: false,
       sparkles: 2,
@@ -187,7 +187,7 @@ function getLevelVisual(level: number) {
   if (level === 2) {
     return {
       tile: "border-pink-300/25 bg-pink-400/10 shadow-[0_0_12px_rgba(244,114,182,0.18)]",
-      iconSize: "text-4xl",
+      iconSize: "text-3xl sm:text-4xl",
       badge: "bg-white/80 text-black",
       ring: false,
       sparkles: 1,
@@ -196,7 +196,7 @@ function getLevelVisual(level: number) {
   }
   return {
     tile: "border-white/10 bg-white/5",
-    iconSize: "text-3xl",
+    iconSize: "text-2xl sm:text-3xl",
     badge: "bg-white/15 text-white",
     ring: false,
     sparkles: 0,
@@ -230,10 +230,10 @@ function Sparkles({ count }: { count: number }) {
   if (count <= 0) return null;
 
   const points = [
-    "left-2 top-2",
-    "right-2 top-3",
-    "left-3 bottom-3",
-    "right-3 bottom-2",
+    "left-1.5 top-1.5",
+    "right-1.5 top-2",
+    "left-2 bottom-2",
+    "right-2 bottom-1.5",
   ];
 
   return (
@@ -241,7 +241,7 @@ function Sparkles({ count }: { count: number }) {
       {points.slice(0, count).map((p, i) => (
         <div
           key={i}
-          className={`absolute ${p} text-[10px] text-pink-200/80 animate-pulse`}
+          className={`absolute ${p} text-[9px] sm:text-[10px] text-pink-200/80 animate-pulse`}
         >
           ✦
         </div>
@@ -265,7 +265,7 @@ function ZoneDecor({
     return (
       <>
         <div
-          className={`absolute inset-x-4 bottom-2 h-5 rounded-full bg-pink-400/20 blur-xl ${
+          className={`absolute inset-x-3 bottom-2 h-4 rounded-full bg-pink-400/20 blur-xl ${
             level >= 4 ? "opacity-100" : level >= 2 ? "opacity-70" : "opacity-40"
           }`}
         />
@@ -324,7 +324,7 @@ function ZoneDecor({
     return (
       <>
         <div
-          className={`absolute -top-4 left-1/2 h-10 w-20 -translate-x-1/2 rounded-full bg-amber-200/20 blur-2xl ${
+          className={`absolute -top-3 left-1/2 h-8 w-16 -translate-x-1/2 rounded-full bg-amber-200/20 blur-2xl ${
             level >= 4 ? "opacity-100" : level >= 2 ? "opacity-70" : "opacity-40"
           }`}
         />
@@ -564,16 +564,16 @@ export default function LabPage() {
     : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 md:space-y-6">
       <div>
-        <h1 className="text-3xl font-black tracking-tight">Lab</h1>
-        <p className="mt-2 text-white/60">
+        <h1 className="text-2xl font-black tracking-tight md:text-3xl">Lab</h1>
+        <p className="mt-2 text-sm text-white/60 md:text-base">
           Build a premium room, unlock each item once, upgrade everything, claim passive
           output, and use boosts to accelerate your setup.
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
         <StatCard label="Balance" value={`${balance} SPRM`} />
         <StatCard label="Owned Items" value={`${ownedCount} / ${ITEM_DEFS.length}`} />
         <StatCard label="Base Output" value={`${totalOutput} / hr`} />
@@ -613,23 +613,23 @@ export default function LabPage() {
         />
       </div>
 
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-white/70">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/70 md:rounded-3xl">
         {message}
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-5">
-          <div className="mb-4 flex items-center justify-between">
+      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-4 md:rounded-3xl md:p-5">
+          <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm uppercase tracking-[0.25em] text-pink-300/70">
+              <div className="text-xs uppercase tracking-[0.25em] text-pink-300/70 md:text-sm">
                 Pleasure Room
               </div>
-              <div className="mt-1 text-lg font-bold">Visual Layout</div>
+              <div className="mt-1 text-base font-bold md:text-lg">Visual Layout</div>
             </div>
-            <div className="text-sm text-white/50">Click any zone to inspect</div>
+            <div className="text-xs text-white/50 md:text-sm">Tap any zone</div>
           </div>
 
-          <div className="relative mx-auto aspect-[4/3] w-full max-w-3xl overflow-hidden rounded-[32px] border border-white/10 bg-neutral-900">
+          <div className="relative mx-auto aspect-[4/3] w-full max-w-3xl overflow-hidden rounded-[20px] border border-white/10 bg-neutral-900 sm:rounded-[24px] md:rounded-[32px]">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(244,114,182,0.18),transparent_28%),radial-gradient(circle_at_bottom,rgba(168,85,247,0.18),transparent_30%)]" />
 
             <div
@@ -649,7 +649,7 @@ export default function LabPage() {
             )}
 
             <div className="absolute inset-x-0 bottom-0 h-[34%] bg-gradient-to-t from-black/50 via-pink-950/10 to-transparent" />
-            <div className="absolute inset-x-6 bottom-4 h-[24%] rounded-[28px] border border-white/8 bg-gradient-to-b from-white/5 to-black/25" />
+            <div className="absolute inset-x-4 bottom-3 h-[24%] rounded-[20px] border border-white/8 bg-gradient-to-b from-white/5 to-black/25 sm:inset-x-6 sm:bottom-4 sm:rounded-[28px]" />
             <div className="absolute inset-x-0 top-[42%] border-t border-white/6" />
 
             {ITEM_DEFS.map((def) => {
@@ -661,7 +661,7 @@ export default function LabPage() {
                 <button
                   key={def.id}
                   onClick={() => selectItem(def.id)}
-                  className={`absolute flex h-28 w-28 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-3xl border transition-all duration-300 hover:scale-105 ${zonePosition(
+                  className={`absolute flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-2xl border transition-all duration-300 hover:scale-105 sm:h-24 sm:w-24 sm:rounded-3xl md:h-28 md:w-28 ${zonePosition(
                     def.id
                   )} ${
                     owned.owned
@@ -670,41 +670,41 @@ export default function LabPage() {
                   } ${selectedId === def.id ? "ring-2 ring-pink-300/40" : ""}`}
                 >
                   {owned.owned && visual.ring && (
-                    <div className="absolute inset-[-6px] rounded-[28px] border border-pink-300/30 animate-pulse" />
+                    <div className="absolute inset-[-4px] rounded-[20px] border border-pink-300/30 animate-pulse sm:inset-[-6px] sm:rounded-[28px]" />
                   )}
 
                   {owned.owned && <Sparkles count={visual.sparkles} />}
                   <ZoneDecor id={def.id} level={owned.level} owned={owned.owned} />
 
                   {!owned.owned && (
-                    <div className="absolute inset-0 rounded-3xl bg-black/20 backdrop-blur-[1px]" />
+                    <div className="absolute inset-0 rounded-2xl bg-black/20 backdrop-blur-[1px] sm:rounded-3xl" />
                   )}
 
                   <div
                     className={`relative z-10 ${
-                      owned.owned ? visual.iconSize : "text-3xl opacity-45 grayscale"
+                      owned.owned ? visual.iconSize : "text-2xl sm:text-3xl opacity-45 grayscale"
                     } transition-all duration-300`}
                   >
                     {def.icon}
                   </div>
 
-                  <div className="relative z-10 mt-1 text-center text-[10px] uppercase tracking-[0.18em] text-white/55">
+                  <div className="relative z-10 mt-1 text-center text-[8px] uppercase tracking-[0.16em] text-white/55 sm:text-[10px]">
                     {def.zoneLabel}
                   </div>
 
                   {owned.owned ? (
                     <>
                       <div
-                        className={`relative z-10 mt-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${visual.badge}`}
+                        className={`relative z-10 mt-1 rounded-full px-1.5 py-0.5 text-[8px] font-bold sm:px-2 sm:text-[10px] ${visual.badge}`}
                       >
                         Lv {owned.level}
                       </div>
-                      <div className="relative z-10 mt-1 text-[10px] text-pink-200">
+                      <div className="relative z-10 mt-1 text-[8px] text-pink-200 sm:text-[10px]">
                         +{itemOutput}/hr
                       </div>
                     </>
                   ) : (
-                    <div className="relative z-10 mt-1 text-[10px] text-white/30">
+                    <div className="relative z-10 mt-1 text-[8px] text-white/30 sm:text-[10px]">
                       Locked
                     </div>
                   )}
@@ -715,8 +715,8 @@ export default function LabPage() {
         </section>
 
         <aside className="space-y-4">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <div className="text-sm uppercase tracking-[0.25em] text-fuchsia-300/70">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:rounded-3xl md:p-5">
+            <div className="text-xs uppercase tracking-[0.25em] text-fuchsia-300/70 md:text-sm">
               Selected Zone
             </div>
 
@@ -724,7 +724,7 @@ export default function LabPage() {
               <div className="mt-4 space-y-4">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`relative flex h-16 w-16 items-center justify-center rounded-2xl border text-3xl ${
+                    className={`relative flex h-14 w-14 items-center justify-center rounded-2xl border text-2xl sm:h-16 sm:w-16 sm:text-3xl ${
                       selectedOwned.owned
                         ? getLevelVisual(selectedOwned.level).tile
                         : "border-white/10 bg-black/20"
@@ -744,8 +744,8 @@ export default function LabPage() {
                     </span>
                   </div>
 
-                  <div>
-                    <div className="font-bold">{selectedDef.name}</div>
+                  <div className="min-w-0">
+                    <div className="truncate font-bold">{selectedDef.name}</div>
                     <div className="text-sm text-white/55">{selectedDef.zoneLabel}</div>
                     <div className="mt-1 text-xs text-pink-300">{selectedDef.vibe}</div>
                   </div>
@@ -755,21 +755,21 @@ export default function LabPage() {
                   <div>{selectedDef.description}</div>
 
                   <div className="mt-4 space-y-2">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between gap-4">
                       <span>Status</span>
-                      <span className="font-bold text-white">
+                      <span className="text-right font-bold text-white">
                         {selectedOwned.owned ? `Owned · Lv ${selectedOwned.level}` : "Locked"}
                       </span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between gap-4">
                       <span>Current Output</span>
-                      <span className="font-bold text-white">
+                      <span className="text-right font-bold text-white">
                         {getItemOutput(selectedDef, selectedOwned)} / hr
                       </span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between gap-4">
                       <span>Next Action</span>
-                      <span className="font-bold text-pink-300">
+                      <span className="text-right font-bold text-pink-300">
                         {getNextActionText(selectedDef, selectedOwned, balance).label}
                       </span>
                     </div>
@@ -794,13 +794,13 @@ export default function LabPage() {
               </div>
             ) : (
               <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/55">
-                Click any room zone to inspect it, unlock it, or upgrade it.
+                Tap any room zone to inspect it, unlock it, or upgrade it.
               </div>
             )}
           </div>
 
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-            <div className="text-sm uppercase tracking-[0.25em] text-emerald-300/70">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:rounded-3xl md:p-5">
+            <div className="text-xs uppercase tracking-[0.25em] text-emerald-300/70 md:text-sm">
               Room Catalog
             </div>
 
@@ -819,7 +819,7 @@ export default function LabPage() {
                     <div className="flex items-start gap-3">
                       <button
                         onClick={() => selectItem(def.id)}
-                        className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border text-2xl ${
+                        className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border text-xl sm:h-14 sm:w-14 sm:text-2xl ${
                           owned.owned ? visual.tile : "border-white/10 bg-white/5"
                         }`}
                       >
@@ -831,8 +831,8 @@ export default function LabPage() {
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-3">
-                          <div className="font-bold">{def.name}</div>
-                          <div className="text-xs text-white/45">{def.zoneLabel}</div>
+                          <div className="truncate font-bold">{def.name}</div>
+                          <div className="shrink-0 text-xs text-white/45">{def.zoneLabel}</div>
                         </div>
 
                         <div className="mt-1 text-sm text-white/55">
@@ -851,7 +851,7 @@ export default function LabPage() {
                           </span>
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between gap-3">
+                        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div className="text-sm text-white/55">
                             <span className="font-bold text-white">{nextAction.label}</span>
                           </div>
@@ -887,9 +887,9 @@ export default function LabPage() {
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-      <div className="text-sm text-white/50">{label}</div>
-      <div className="mt-2 text-2xl font-black">{value}</div>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:rounded-3xl md:p-5">
+      <div className="text-xs text-white/50 md:text-sm">{label}</div>
+      <div className="mt-2 text-lg font-black md:text-2xl">{value}</div>
     </div>
   );
 }
@@ -919,9 +919,9 @@ function ActionCard({
       : "bg-white/10 hover:bg-white/20";
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-      <div className="text-sm uppercase tracking-[0.2em] text-white/45">{title}</div>
-      <div className="mt-2 text-2xl font-black">{value}</div>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:rounded-3xl md:p-5">
+      <div className="text-xs uppercase tracking-[0.2em] text-white/45">{title}</div>
+      <div className="mt-2 text-xl font-black md:text-2xl">{value}</div>
       <div className="mt-1 text-sm text-white/55">{subtitle}</div>
       <button
         onClick={onClick}

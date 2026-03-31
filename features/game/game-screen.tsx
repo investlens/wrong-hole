@@ -22,8 +22,8 @@ type FloatingText = {
   text: string;
 };
 
-const GAME_WIDTH = 360;
-const GAME_HEIGHT = 500;
+const GAME_WIDTH = 300;
+const GAME_HEIGHT = 420;
 const TOTAL_HOLES = 5;
 const ROUND_TIME = 20;
 
@@ -91,8 +91,8 @@ function getTimeBonus(combo: number) {
 
 function createHoles(level: number): Hole[] {
   const correctIndex = randomBetween(0, TOTAL_HOLES - 1);
-  const minSize = Math.max(42, 58 - level * 2);
-  const maxSize = Math.max(50, 68 - level * 2);
+  const minSize = Math.max(38, 54 - level * 2);
+  const maxSize = Math.max(46, 64 - level * 2);
 
   return Array.from({ length: TOTAL_HOLES }).map((_, index) => {
     let type: HoleType = "danger";
@@ -115,8 +115,8 @@ function createHoles(level: number): Hole[] {
         ? randomBetween(minSize, maxSize)
         : randomBetween(minSize + 2, maxSize + 8);
 
-    const top = randomBetween(40, GAME_HEIGHT - 110);
-    const left = randomBetween(20, GAME_WIDTH - 90);
+    const top = randomBetween(36, GAME_HEIGHT - 100);
+    const left = randomBetween(16, GAME_WIDTH - 84);
 
     return {
       id: index,
@@ -204,8 +204,8 @@ export default function GameScreen({ onRunComplete }: GameScreenProps) {
 
       setBonus({
         id: Math.random(),
-        x: randomBetween(20, GAME_WIDTH - 80),
-        y: randomBetween(40, GAME_HEIGHT - 120),
+        x: randomBetween(16, GAME_WIDTH - 76),
+        y: randomBetween(36, GAME_HEIGHT - 110),
         type: types[randomBetween(0, types.length - 1)],
       });
 
@@ -235,7 +235,7 @@ export default function GameScreen({ onRunComplete }: GameScreenProps) {
   useEffect(() => {
     if (!started || gameOver) return;
 
-    const baseSpeed = Math.max(1400 - level * 60, 650);
+    const baseSpeed = Math.max(1400 - level * 60, 700);
     const speed = baseSpeed + randomBetween(-80, 80);
 
     const moveTargets = setInterval(() => {
@@ -251,20 +251,20 @@ export default function GameScreen({ onRunComplete }: GameScreenProps) {
     const drift = setInterval(() => {
       setHoles((prev) =>
         prev.map((hole) => {
-          const driftAmount = Math.min(6 + level, 14);
+          const driftAmount = Math.min(6 + level, 12);
 
           const nextTop = Math.max(
-            20,
+            18,
             Math.min(
-              GAME_HEIGHT - 100,
+              GAME_HEIGHT - 90,
               hole.top + randomBetween(-driftAmount, driftAmount)
             )
           );
 
           const nextLeft = Math.max(
-            10,
+            8,
             Math.min(
-              GAME_WIDTH - 80,
+              GAME_WIDTH - 72,
               hole.left + randomBetween(-driftAmount, driftAmount)
             )
           );
@@ -276,7 +276,7 @@ export default function GameScreen({ onRunComplete }: GameScreenProps) {
           };
         })
       );
-    }, 280);
+    }, 300);
 
     return () => clearInterval(drift);
   }, [started, gameOver, level]);
@@ -322,21 +322,21 @@ export default function GameScreen({ onRunComplete }: GameScreenProps) {
     localStorage.setItem("wh_total_runs", String(newRuns));
 
     if (score > bestScore) {
-        setBestScore(score);
-        localStorage.setItem("wh_best_score", String(score));
+      setBestScore(score);
+      localStorage.setItem("wh_best_score", String(score));
     }
 
     if (level > highestLevel) {
-        setHighestLevel(level);
-        localStorage.setItem("wh_highest_level", String(level));
+      setHighestLevel(level);
+      localStorage.setItem("wh_highest_level", String(level));
     }
 
     if (onRunComplete) {
-        onRunComplete({
+      onRunComplete({
         score,
         shownEarned: Math.floor(shownEarned),
         level,
-        });
+      });
     }
   }
 
@@ -414,11 +414,11 @@ export default function GameScreen({ onRunComplete }: GameScreenProps) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_320px]">
-      <div className="rounded-3xl border border-white/10 bg-white/5 p-4 md:p-6">
+    <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:rounded-3xl md:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-black">Wrong Hole</h2>
+            <h2 className="text-xl font-black md:text-2xl">Wrong Hole</h2>
             <p className="mt-1 text-sm text-white/60">
               Tap the inviting one. The others are trouble.
             </p>
@@ -426,7 +426,7 @@ export default function GameScreen({ onRunComplete }: GameScreenProps) {
 
           <button
             onClick={startGame}
-            className="rounded-2xl bg-fuchsia-500 px-5 py-3 font-semibold text-white transition hover:bg-fuchsia-400"
+            className="rounded-2xl bg-fuchsia-500 px-4 py-3 font-semibold text-white transition hover:bg-fuchsia-400 md:px-5"
           >
             {gameOver || !started ? "Play / Restart" : "Playing"}
           </button>
@@ -444,136 +444,140 @@ export default function GameScreen({ onRunComplete }: GameScreenProps) {
           <div className="text-xs uppercase tracking-[0.25em] text-pink-300/70">
             Current Mood
           </div>
-          <div className="mt-2 text-lg font-bold">{comboTitle}</div>
+          <div className="mt-2 text-base font-bold md:text-lg">{comboTitle}</div>
         </div>
 
-        <div
-          className={`relative mx-auto overflow-hidden rounded-[28px] border border-white/10 bg-neutral-900 transition-all duration-150 ${
-            pulse === "hit"
-              ? "scale-[1.01] shadow-[0_0_30px_rgba(244,114,182,0.18)]"
-              : pulse === "miss"
-              ? "-translate-x-1 scale-[0.99] shadow-[0_0_30px_rgba(248,113,113,0.16)]"
-              : pulse === "levelup"
-              ? "scale-[1.015] shadow-[0_0_36px_rgba(251,191,36,0.20)]"
-              : ""
-          } ${clutchMode ? "ring-2 ring-red-400/40 shadow-[0_0_40px_rgba(248,113,113,0.18)]" : ""}`}
-          style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
-        >
-          {bonus && (
-            <button
-              onClick={onBonusClick}
-              className="absolute z-30 animate-bonus"
-              style={{
-                left: bonus.x,
-                top: bonus.y,
-              }}
-            >
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 via-fuchsia-400 to-pink-500 text-2xl shadow-[0_0_30px_rgba(244,114,182,0.7)] animate-pulse">
-                {bonus.type === "sprm" && "🎀"}
-                {bonus.type === "time" && "👙"}
-                {bonus.type === "combo" && "🧸"}
-              </div>
-            </button>
-          )}
+        <div className="overflow-x-auto">
+          <div
+            className={`relative mx-auto overflow-hidden rounded-[24px] border border-white/10 bg-neutral-900 transition-all duration-150 ${
+              pulse === "hit"
+                ? "scale-[1.01] shadow-[0_0_30px_rgba(244,114,182,0.18)]"
+                : pulse === "miss"
+                ? "-translate-x-1 scale-[0.99] shadow-[0_0_30px_rgba(248,113,113,0.16)]"
+                : pulse === "levelup"
+                ? "scale-[1.015] shadow-[0_0_36px_rgba(251,191,36,0.20)]"
+                : ""
+            } ${clutchMode ? "ring-2 ring-red-400/40 shadow-[0_0_40px_rgba(248,113,113,0.18)]" : ""}`}
+            style={{ width: GAME_WIDTH, height: GAME_HEIGHT }}
+          >
+            {bonus && (
+              <button
+                onClick={onBonusClick}
+                className="absolute z-30 animate-bonus"
+                style={{
+                  left: bonus.x,
+                  top: bonus.y,
+                }}
+              >
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-pink-400 via-fuchsia-400 to-pink-500 text-xl shadow-[0_0_30px_rgba(244,114,182,0.7)] animate-pulse sm:h-16 sm:w-16 sm:text-2xl">
+                  {bonus.type === "sprm" && "🎀"}
+                  {bonus.type === "time" && "👙"}
+                  {bonus.type === "combo" && "🧸"}
+                </div>
+              </button>
+            )}
 
-          {showEndSplash && (
-            <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-              <div className="relative flex items-center justify-center">
-                <div className="absolute h-64 w-64 animate-splash rounded-full bg-gradient-to-br from-pink-400/40 via-white/20 to-fuchsia-500/30 blur-2xl" />
+            {showEndSplash && (
+              <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute h-52 w-52 animate-splash rounded-full bg-gradient-to-br from-pink-400/40 via-white/20 to-fuchsia-500/30 blur-2xl sm:h-64 sm:w-64" />
 
-                <div className="relative flex h-48 w-48 items-center justify-center rounded-full border border-white/20 bg-white/10 shadow-[0_0_60px_rgba(244,114,182,0.25)] backdrop-blur-xl">
-                  <div className="text-center">
-                    <div className="text-xs uppercase tracking-[0.3em] text-white/50">
-                      Final Score
-                    </div>
-                    <div className="mt-2 text-4xl font-black text-white">{score}</div>
-                    <div className="mt-2 text-sm text-white/60">
-                      Level {level} · {shownEarned} SPRM
+                  <div className="relative flex h-40 w-40 items-center justify-center rounded-full border border-white/20 bg-white/10 shadow-[0_0_60px_rgba(244,114,182,0.25)] backdrop-blur-xl sm:h-48 sm:w-48">
+                    <div className="px-3 text-center">
+                      <div className="text-[10px] uppercase tracking-[0.3em] text-white/50 sm:text-xs">
+                        Final Score
+                      </div>
+                      <div className="mt-2 text-3xl font-black text-white sm:text-4xl">
+                        {score}
+                      </div>
+                      <div className="mt-2 text-xs text-white/60 sm:text-sm">
+                        Level {level} · {shownEarned} SPRM
+                      </div>
                     </div>
                   </div>
                 </div>
+
+                <div className="absolute bottom-6 flex flex-col gap-3 sm:bottom-10 sm:flex-row sm:gap-4">
+                  <button
+                    onClick={startGame}
+                    className="rounded-2xl bg-fuchsia-500 px-5 py-3 font-semibold text-white hover:bg-fuchsia-400 sm:px-6"
+                  >
+                    Run it back
+                  </button>
+
+                  <button
+                    onClick={() => setShowEndSplash(false)}
+                    className="rounded-2xl border border-white/20 px-5 py-3 text-white/80 hover:bg-white/10 sm:px-6"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
+            )}
 
-              <div className="absolute bottom-10 flex gap-4">
-                <button
-                  onClick={startGame}
-                  className="rounded-2xl bg-fuchsia-500 px-6 py-3 font-semibold text-white hover:bg-fuchsia-400"
-                >
-                  Run it back
-                </button>
+            <div className={`absolute inset-0 ${boardTheme}`} />
 
-                <button
-                  onClick={() => setShowEndSplash(false)}
-                  className="rounded-2xl border border-white/20 px-6 py-3 text-white/80 hover:bg-white/10"
-                >
-                  Close
-                </button>
+            {showLevelUp && (
+              <div className="absolute left-1/2 top-4 z-30 -translate-x-1/2 rounded-full border border-amber-300/30 bg-amber-400/15 px-4 py-2 text-xs font-bold text-amber-200 shadow-[0_0_20px_rgba(251,191,36,0.15)] sm:top-6 sm:px-5 sm:text-sm">
+                Level Up · {level}
               </div>
-            </div>
-          )}
+            )}
 
-          <div className={`absolute inset-0 ${boardTheme}`} />
-
-          {showLevelUp && (
-            <div className="absolute left-1/2 top-6 z-30 -translate-x-1/2 rounded-full border border-amber-300/30 bg-amber-400/15 px-5 py-2 text-sm font-bold text-amber-200 shadow-[0_0_20px_rgba(251,191,36,0.15)]">
-              Level Up · {level}
-            </div>
-          )}
-
-          {clutchMode && (
-            <div className="absolute left-1/2 top-20 z-30 -translate-x-1/2 rounded-full border border-red-300/30 bg-red-400/15 px-4 py-2 text-xs font-bold uppercase tracking-[0.25em] text-red-200 shadow-[0_0_18px_rgba(248,113,113,0.16)]">
-              Clutch Mode
-            </div>
-          )}
-
-          {!started && !showEndSplash && (
-            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/45 text-center backdrop-blur-sm">
-              <h3 className="text-3xl font-black">
-                {gameOver ? "Run Over" : "Ready?"}
-              </h3>
-              <p className="mt-3 max-w-xs text-sm text-white/65">{message}</p>
-              {lastResult ? (
-                <p className="mt-2 max-w-xs text-xs text-white/45">{lastResult}</p>
-              ) : null}
-            </div>
-          )}
-
-          {holes.map((hole) => (
-            <button
-              key={`${hole.id}-${hole.top}-${hole.left}-${hole.size}`}
-              onClick={() => onHoleClick(hole)}
-              className={`absolute rounded-full border transition-all duration-300 ease-out hover:scale-105 ${getHoleClasses(
-                hole.type
-              )}`}
-              style={{
-                top: `${hole.top}px`,
-                left: `${hole.left}px`,
-                width: `${hole.size}px`,
-                height: `${hole.size}px`,
-              }}
-            >
-              <div className="relative mx-auto mt-1 flex h-[70%] w-[70%] items-center justify-center rounded-full bg-black/75 text-lg font-black text-white/80">
-                {getHoleLabel(hole.type)}
+            {clutchMode && (
+              <div className="absolute left-1/2 top-16 z-30 -translate-x-1/2 rounded-full border border-red-300/30 bg-red-400/15 px-3 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-red-200 shadow-[0_0_18px_rgba(248,113,113,0.16)] sm:top-20 sm:px-4 sm:text-xs">
+                Clutch Mode
               </div>
+            )}
 
-              {hole.type === "correct" && (
-                <div className="absolute -inset-1 rounded-full border border-pink-300/30 animate-pulse" />
-              )}
-            </button>
-          ))}
+            {!started && !showEndSplash && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/45 px-4 text-center backdrop-blur-sm">
+                <h3 className="text-2xl font-black sm:text-3xl">
+                  {gameOver ? "Run Over" : "Ready?"}
+                </h3>
+                <p className="mt-3 max-w-xs text-sm text-white/65">{message}</p>
+                {lastResult ? (
+                  <p className="mt-2 max-w-xs text-xs text-white/45">{lastResult}</p>
+                ) : null}
+              </div>
+            )}
 
-          {floatingTexts.map((item) => (
-            <div
-              key={item.id}
-              className="pointer-events-none absolute z-30 animate-[floatUp_0.9s_ease-out_forwards] text-sm font-bold text-emerald-300"
-              style={{ left: item.x, top: item.y }}
-            >
-              {item.text}
+            {holes.map((hole) => (
+              <button
+                key={`${hole.id}-${hole.top}-${hole.left}-${hole.size}`}
+                onClick={() => onHoleClick(hole)}
+                className={`absolute rounded-full border transition-all duration-300 ease-out hover:scale-105 ${getHoleClasses(
+                  hole.type
+                )}`}
+                style={{
+                  top: `${hole.top}px`,
+                  left: `${hole.left}px`,
+                  width: `${hole.size}px`,
+                  height: `${hole.size}px`,
+                }}
+              >
+                <div className="relative mx-auto mt-1 flex h-[70%] w-[70%] items-center justify-center rounded-full bg-black/75 text-base font-black text-white/80 sm:text-lg">
+                  {getHoleLabel(hole.type)}
+                </div>
+
+                {hole.type === "correct" && (
+                  <div className="absolute -inset-1 rounded-full border border-pink-300/30 animate-pulse" />
+                )}
+              </button>
+            ))}
+
+            {floatingTexts.map((item) => (
+              <div
+                key={item.id}
+                className="pointer-events-none absolute z-30 animate-[floatUp_0.9s_ease-out_forwards] text-xs font-bold text-emerald-300 sm:text-sm"
+                style={{ left: item.x, top: item.y }}
+              >
+                {item.text}
+              </div>
+            ))}
+
+            <div className="absolute bottom-3 left-3 right-3 rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-xs text-white/80 backdrop-blur sm:text-sm">
+              {message}
             </div>
-          ))}
-
-          <div className="absolute bottom-3 left-3 right-3 rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-sm text-white/80 backdrop-blur">
-            {message}
           </div>
         </div>
       </div>
@@ -629,11 +633,11 @@ export default function GameScreen({ onRunComplete }: GameScreenProps) {
 
 function StatBox({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="text-xs uppercase tracking-[0.2em] text-white/45">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 md:p-4">
+      <div className="text-[10px] uppercase tracking-[0.2em] text-white/45 md:text-xs">
         {label}
       </div>
-      <div className="mt-2 text-xl font-black">{value}</div>
+      <div className="mt-2 text-base font-black md:text-xl">{value}</div>
     </div>
   );
 }
@@ -648,8 +652,8 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-      <div className={`text-sm uppercase tracking-[0.25em] ${color}`}>{title}</div>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 md:rounded-3xl md:p-5">
+      <div className={`text-xs uppercase tracking-[0.25em] md:text-sm ${color}`}>{title}</div>
       <div className="mt-4">{children}</div>
     </div>
   );
