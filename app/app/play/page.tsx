@@ -2,8 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CircleDollarSign, Wallet, Zap } from "lucide-react";
-import GameScreen from "@/features/game/game-screen";
+import {
+  ArrowRight,
+  CircleDollarSign,
+  Wallet,
+  Zap,
+  ShieldCheck,
+  LockKeyhole,
+  Trophy,
+} from "lucide-react";
+import GameScreen from "../../../features/game/game-screen";
 import {
   ConnectButton,
   useCurrentAccount,
@@ -15,6 +23,14 @@ type RunResult = {
   shownEarned: number;
   level: number;
 };
+
+const FREE_MODE_LABEL = "Free Training";
+const FREE_MODE_POINTS_MULTIPLIER_TEXT = "Lower SPRM Points";
+const PAID_MODE_POINTS_MULTIPLIER_TEXT = "Higher SPRM Points";
+const FREE_POINTS_NOTE =
+  "Free runs award reduced SPRM Points. Paid arena rounds will award more.";
+const WALLET_REQUIRED_NOTE =
+  "Connect your wallet before playing so rewards can be linked to your wallet identity.";
 
 export default function PlayPage() {
   const account = useCurrentAccount();
@@ -38,64 +54,90 @@ export default function PlayPage() {
   const [labBalance, setLabBalance] = useState(0);
 
   useEffect(() => {
-    const val = Number(localStorage.getItem("wh_lab_balance") || 0);
+    if (!account?.address) {
+      setLabBalance(0);
+      return;
+    }
+
+    const key = `wh_lab_balance_${account.address.toLowerCase()}`;
+    const val = Number(localStorage.getItem(key) || 0);
     setLabBalance(val);
-  }, []);
+  }, [account?.address]);
 
   function handleRunComplete(result: RunResult) {
+    if (!account?.address) return;
+
     setLastRun(result);
 
-    const currentBalance = Number(localStorage.getItem("wh_lab_balance") || 0);
-    const nextBalance = currentBalance + Math.floor(result.shownEarned);
+    const walletKey = account.address.toLowerCase();
+    const balanceKey = `wh_lab_balance_${walletKey}`;
+    const totalEarnedKey = `wh_total_game_earned_${walletKey}`;
 
-    localStorage.setItem("wh_lab_balance", String(nextBalance));
+    const currentBalance = Number(localStorage.getItem(balanceKey) || 0);
+
+    // Free mode gives less SPRM Points
+    const creditedPoints = Math.max(1, Math.floor(result.shownEarned * 0.35));
+    const nextBalance = currentBalance + creditedPoints;
+
+    localStorage.setItem(balanceKey, String(nextBalance));
     setLabBalance(nextBalance);
 
-    const totalEarned = Number(localStorage.getItem("wh_total_game_earned") || 0);
-    localStorage.setItem(
-      "wh_total_game_earned",
-      String(totalEarned + Math.floor(result.shownEarned))
-    );
+    const totalEarned = Number(localStorage.getItem(totalEarnedKey) || 0);
+    localStorage.setItem(totalEarnedKey, String(totalEarned + creditedPoints));
+
+    setLastRun({
+      ...result,
+      shownEarned: creditedPoints,
+    });
   }
 
   const earlyPlayerNote = useMemo(() => {
-    return "Free runs build SPRM Points now. Paid SUI rounds can plug in later.";
+    return "Free runs now award fewer SPRM Points. Paid SUI arena rounds should award more once live.";
   }, []);
+
+  const walletShort = account
+    ? `${account.address.slice(0, 6)}...${account.address.slice(-4)}`
+    : "Not Connected";
 
   return (
     <main className="space-y-6 md:space-y-8">
       <section className="relative overflow-hidden rounded-[28px] border border-white/10 bg-black/40 p-5 backdrop-blur-xl md:rounded-[36px] md:p-8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(244,114,182,0.18),transparent_30%),radial-gradient(circle_at_bottom,rgba(168,85,247,0.16),transparent_35%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(244,114,182,0.20),transparent_28%),radial-gradient(circle_at_bottom,rgba(168,85,247,0.18),transparent_34%),radial-gradient(circle_at_center,rgba(59,130,246,0.10),transparent_40%)]" />
+        <div className="absolute -left-10 top-10 h-40 w-40 rounded-full bg-fuchsia-500/10 blur-3xl" />
+        <div className="absolute -right-8 bottom-0 h-48 w-48 rounded-full bg-purple-500/10 blur-3xl" />
+
         <div className="relative z-10 grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-pink-300/20 bg-pink-400/10 px-4 py-2 text-[11px] uppercase tracking-[0.3em] text-pink-200/80">
-              Live Arena
+              Skill Arena
             </div>
 
             <h1 className="mt-5 text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
-              Enter the Arena
+              Train Free. Climb Fast. Enter Paid Later.
             </h1>
 
             <p className="mt-4 max-w-xl text-sm leading-7 text-white/62 md:text-base">
-              Train on free rounds now, stack SPRM Points, and build your edge
-              before live SUI entry rounds arrive.
+              Free mode is your training ground. Build reactions, improve score,
+              and stack reduced SPRM Points. Paid SUI arena rounds will reward
+              higher SPRM Points and stronger upside.
             </p>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/app/mine"
+                href="/app/arena"
                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-pink-500 px-6 py-4 font-semibold text-white transition hover:scale-[1.02] hover:from-fuchsia-400 hover:to-pink-400"
               >
-                Build Your Lab
+                Open Arena Hub
                 <ArrowRight className="h-4 w-4" />
               </Link>
 
-              <button
-                type="button"
+              <Link
+                href="/app/arena/sui"
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-6 py-4 font-semibold text-white/80 transition hover:bg-white/10"
               >
-                SUI Rounds Soon
-              </button>
+                Paid Arena
+                <Trophy className="h-4 w-4" />
+              </Link>
             </div>
           </div>
 
@@ -103,26 +145,30 @@ export default function PlayPage() {
             <ArenaCard
               icon={<Wallet className="h-5 w-5" />}
               title="Wallet Status"
-              value={account ? "Connected" : "Not Connected"}
-              sub={account ? "Wallet linked for future SUI entry" : "Connect later for SUI entry"}
+              value={account ? "Connected" : "Required"}
+              sub={
+                account
+                  ? "Rewards are linked to this wallet identity"
+                  : "Connect wallet before playing"
+              }
             />
             <ArenaCard
               icon={<CircleDollarSign className="h-5 w-5" />}
-              title="Entry Mode"
-              value="Free Training"
-              sub="Paid pool mode coming next"
+              title="Mode"
+              value={FREE_MODE_LABEL}
+              sub={FREE_MODE_POINTS_MULTIPLIER_TEXT}
             />
             <ArenaCard
               icon={<Zap className="h-5 w-5" />}
-              title="Reward Feed"
+              title="Linked Balance"
               value={`${labBalance} SPRM`}
-              sub="Current in-app Lab balance"
+              sub={account ? "Wallet-linked local test balance" : "Connect wallet to activate"}
             />
             <ArenaCard
-              icon={<ArrowRight className="h-5 w-5" />}
-              title="Next Phase"
-              value="SUI Integration"
-              sub="Wallet + pool entry + payouts"
+              icon={<ShieldCheck className="h-5 w-5" />}
+              title="Protection"
+              value="Wallet Gate"
+              sub="Helps reduce fake runs and bot abuse"
             />
           </div>
         </div>
@@ -140,15 +186,16 @@ export default function PlayPage() {
               </div>
             </div>
 
-            <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
-              Early Access
+            <div className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-200">
+              Wallet Required
             </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-4">
             <MiniStat label="Players" value="1 / Solo" />
             <MiniStat label="Entry" value="0 SUI" />
-            <MiniStat label="Reward" value="SPRM Points" />
+            <MiniStat label="Reward" value="Reduced SPRM" />
+            <MiniStat label="Paid Mode" value="Higher SPRM" />
           </div>
 
           <div className="mt-5 rounded-2xl border border-white/10 bg-black/25 p-4 text-sm text-white/65">
@@ -169,9 +216,7 @@ export default function PlayPage() {
             <div className="mt-4 space-y-2 text-sm text-white/70">
               <div className="flex justify-between gap-4">
                 <span>Address</span>
-                <span className="font-bold text-white">
-                  {account.address.slice(0, 6)}...{account.address.slice(-4)}
-                </span>
+                <span className="font-bold text-white">{walletShort}</span>
               </div>
 
               <div className="flex justify-between gap-4">
@@ -186,13 +231,13 @@ export default function PlayPage() {
                 </span>
               </div>
 
-              <div className="mt-3 text-xs text-white/50">
-                Paid entry rounds coming soon
+              <div className="mt-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-xs text-emerald-200">
+                Free mode rewards are now tied to this wallet identity.
               </div>
             </div>
           ) : (
-            <div className="mt-4 text-sm text-white/50">
-              Connect wallet to enable SUI features
+            <div className="mt-4 rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4 text-sm text-yellow-100">
+              {WALLET_REQUIRED_NOTE}
             </div>
           )}
         </div>
@@ -205,16 +250,40 @@ export default function PlayPage() {
               Arena Session
             </div>
             <div className="mt-2 text-xl font-bold md:text-2xl">
-              Train. Earn. Repeat.
+              Train. Earn Less. Upgrade Into Paid.
             </div>
           </div>
 
           <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/70">
-            Rewards feed your Lab
+            Free = lower rewards / Paid = higher rewards
           </div>
         </div>
 
-        <GameScreen onRunComplete={handleRunComplete} />
+        {account ? (
+          <GameScreen onRunComplete={handleRunComplete} />
+        ) : (
+          <div className="rounded-[24px] border border-white/10 bg-black/25 p-6 md:p-8">
+            <div className="mx-auto max-w-xl text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-fuchsia-400/20 bg-fuchsia-500/10 text-fuchsia-200">
+                <LockKeyhole className="h-6 w-6" />
+              </div>
+
+              <div className="mt-4 text-2xl font-black text-white">
+                Connect Wallet To Start Free Runs
+              </div>
+
+              <p className="mt-3 text-sm leading-7 text-white/60 md:text-base">
+                This blocks anonymous farming, helps reduce bot abuse, and makes
+                sure SPRM Points can be attached to a wallet identity from the
+                start.
+              </p>
+
+              <div className="mt-6 flex justify-center">
+                <ConnectButton />
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {lastRun && (
@@ -229,24 +298,25 @@ export default function PlayPage() {
             <MiniStat label="Level" value={String(lastRun.level)} />
           </div>
 
-          <div className="mt-4 text-sm text-white/60">
-            This reward has already been added to your Lab balance.
+          <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/60">
+            Free mode reward has been added against the connected wallet profile.
+            Paid arena mode should credit more SPRM Points than free mode.
           </div>
         </section>
       )}
 
       <section className="grid gap-4 md:grid-cols-3">
         <InfoCard
-          title="Now"
-          text="Free rounds build points, train reactions, and grow your in-app economy."
+          title="Free Mode"
+          text="Practice the mechanic, improve your score, and earn reduced SPRM Points."
         />
         <InfoCard
-          title="Next"
-          text="Connect SUI wallet, show balance, and unlock live entry flow."
+          title="Paid Arena"
+          text="Spend SUI, play the same core game, and unlock higher SPRM Point rewards."
         />
         <InfoCard
-          title="Later"
-          text="Move into paid pool rounds, verified entry, and live token mechanics."
+          title="Next Layer"
+          text="Move reward storage from local testing into Supabase by wallet address, then later convert eligible points into claimable SPRM."
         />
       </section>
     </main>
@@ -265,7 +335,7 @@ function ArenaCard({
   sub: string;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-[0_0_30px_rgba(255,255,255,0.02)]">
       <div className="flex items-center gap-2 text-pink-300">{icon}</div>
       <div className="mt-3 text-xs uppercase tracking-[0.22em] text-white/40">
         {title}
@@ -297,3 +367,4 @@ function InfoCard({ title, text }: { title: string; text: string }) {
     </div>
   );
 }
+

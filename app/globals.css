@@ -240,3 +240,19 @@ body {
     transform: translate(-50%, -50%) scale(1);
   }
 }
+
+@keyframes floatBlob {
+  0% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.05);
+  }
+  100% {
+    transform: translateY(0px) scale(1);
+  }
+}
+
+.blob-animate {
+  animation: floatBlob 3s ease-in-out infinite;
+}
