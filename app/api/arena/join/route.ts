@@ -88,18 +88,18 @@ async function verifySuiPayment({
   const balanceChanges = tx.balanceChanges || [];
 
   const receiverGain = balanceChanges
-    .filter((change: any) => {
-      const owner = change.owner;
-      if (!owner || typeof owner !== "object") return false;
-      if (!("AddressOwner" in owner)) return false;
-
-      return (
-        normalizeAddress(String(owner.AddressOwner)) ===
-          normalizeAddress(expectedReceiver) &&
-        change.coinType === "0x2::sui::SUI"
-      );
-    })
-    .reduce((sum: bigint, change: any) => sum + BigInt(change.amount), BigInt(0));
+  .filter((change: any) => {
+    const owner = change?.owner;
+    return (
+      owner &&
+      typeof owner === "object" &&
+      owner.AddressOwner === RECEIVER_ADDRESS
+    );
+  })
+  .reduce(
+    (sum: bigint, change: any) => sum + BigInt(change.amount),
+    BigInt(0)
+  );
 
   if (receiverGain < expectedAmountMist) {
     throw new Error("Expected payment amount was not received.");
