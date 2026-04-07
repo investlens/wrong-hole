@@ -99,7 +99,7 @@ async function verifySuiPayment({
         change.coinType === "0x2::sui::SUI"
       );
     })
-    .reduce((sum: bigint, change: any) => sum + BigInt(change.amount), 0n);
+    .reduce((sum: bigint, change: any) => sum + BigInt(change.amount), BigInt(0));
 
   if (receiverGain < expectedAmountMist) {
     throw new Error("Expected payment amount was not received.");

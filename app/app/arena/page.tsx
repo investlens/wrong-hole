@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -56,7 +56,7 @@ function getTicketMultiplier(tickets: number) {
   return 1.0;
 }
 
-export default function ArenaGamePage() {
+function ArenaGamePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const account = useCurrentAccount();
@@ -198,57 +198,48 @@ export default function ArenaGamePage() {
   }
 
   async function fillFakeRound() {
-  if (!account?.address) {
-    setDevMessage("Connect wallet first.");
-    return;
-  }
-
-  try {
-    setDevLoading(true);
-    setDevMessage("Filling fake round...");
-
-    const res = await fetch("/api/arena/dev-fill-round", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        walletAddress: account.address,
-      }),
-    });
-
-    const raw = await res.text();
-    let data: any = null;
+    if (!account?.address) {
+      setDevMessage("Connect wallet first.");
+      return;
+    }
 
     try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch {
-      data = { error: raw || "Invalid server response." };
+      setDevLoading(true);
+      setDevMessage("Filling fake round...");
+
+      const res = await fetch("/api/arena/dev-fill-round", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          walletAddress: account.address,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || data?.error) {
+        throw new Error(data?.error || "Failed to fill fake round.");
+      }
+
+      setRoundData({
+        id: data?.roundId,
+        status: data?.status,
+        players: data?.players || [],
+        total_pool: data?.total_pool || 0,
+      });
+
+      setDevMessage(
+        `Fake round ready. Round #${data?.roundId} now has ${data?.players?.length || 0} players.`
+      );
+    } catch (err: any) {
+      console.error("fillFakeRound error:", err);
+      setDevMessage(err.message || "Failed to fill fake round.");
+    } finally {
+      setDevLoading(false);
     }
-
-    console.log("dev-fill-round response:", data);
-
-    if (!res.ok || data?.error) {
-      throw new Error(data?.error || `Request failed with status ${res.status}`);
-    }
-
-    setRoundData({
-      id: data?.roundId,
-      status: data?.status,
-      players: data?.players || [],
-      total_pool: data?.total_pool || 0,
-    });
-
-    setDevMessage(
-      `Fake round ready. Round #${data?.roundId} now has ${data?.players?.length || 0} players.`
-    );
-  } catch (err: any) {
-    console.error("fillFakeRound error:", err);
-    setDevMessage(err.message || "Failed to fill fake round.");
-  } finally {
-    setDevLoading(false);
   }
-}
 
   async function submitFakeOpponentScores() {
     if (!account?.address) {
@@ -743,5 +734,21 @@ function LockedPanel({ text }: { text: string }) {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function ArenaGamePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="space-y-6 md:space-y-8">
+          <section className="rounded-[28px] border border-white/10 bg-white/5 p-6">
+            <div className="text-white/60">Loading arena...</div>
+          </section>
+        </main>
+      }
+    >
+      <ArenaGamePageContent />
+    </Suspense>
   );
 }
