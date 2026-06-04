@@ -10,12 +10,10 @@ import {
 import {
   ArrowLeft,
   CircleDollarSign,
-  ShieldCheck,
-  Trophy,
-  Users,
   Wallet,
   Zap,
   RefreshCw,
+  FlaskConical,
   CheckCircle2,
   XCircle,
   Sparkles,
@@ -38,7 +36,7 @@ type CurrentRoundResponse = {
   id?: string | number;
   status?: string;
   players?: Player[];
-  total_pool?: number;
+  total_pool?: number; // stored in MIST
   winner_wallet?: string | null;
 };
 
@@ -60,8 +58,8 @@ type SurvivorEntry = {
 };
 
 const TICKET_PRICE_SUI = 0.1;
+const TICKET_PRICE_MIST = 100_000_000;
 const HOLES = [1, 2, 3, 4, 5];
-const SAFE_HOLES_COUNT = 4; // 1 wrong hole, 4 safe holes
 const SURVIVOR_SPRM = 20;
 const WINNER_BONUS_SPRM = 30;
 const SURVIVAL_BOOST = 1.5;
@@ -77,17 +75,23 @@ function getTicketMultiplier(tickets: number) {
   return 1.0;
 }
 
-function pickSafeHoles(seed?: number) {
-  const holes = [...HOLES];
-  let random = seed ?? Date.now();
+function makeSeedFromValue(value: string | number | null | undefined) {
+  const text = String(value ?? "0");
+  let hash = 0;
 
-  for (let i = holes.length - 1; i > 0; i--) {
-    random = (random * 9301 + 49297) % 233280;
-    const j = Math.floor((random / 233280) * (i + 1));
-    [holes[i], holes[j]] = [holes[j], holes[i]];
+  for (let i = 0; i < text.length; i++) {
+    hash = (hash * 31 + text.charCodeAt(i)) % 2147483647;
   }
 
-  return holes.slice(0, SAFE_HOLES_COUNT).sort((a, b) => a - b);
+  return hash;
+}
+
+function pickWrongHole(seed?: number) {
+  const holes = [...HOLES];
+  let random = Number.isFinite(seed) ? (seed as number) : Date.now();
+  random = (random * 9301 + 49297) % 233280;
+  const index = Math.floor((random / 233280) * holes.length);
+  return holes[Math.max(0, Math.min(index, holes.length - 1))];
 }
 
 function buildSurvivorEntries({
@@ -116,14 +120,15 @@ function buildSurvivorEntries({
       survived = mySurvived;
       score = myScore;
     } else {
-      // temporary local/dev simulation
       survived = i % 2 === 0;
-      score = 120 + ((i + 1) * 37) % 220;
+      score = 130 + ((i + 1) * 29) % 210;
     }
 
     if (!survived) continue;
 
-    const finalPower = Math.floor(score * ticketMultiplier * SURVIVAL_BOOST);
+    const finalPower = Number(
+      (score * ticketMultiplier * SURVIVAL_BOOST).toFixed(2)
+    );
 
     entries.push({
       wallet,
@@ -163,17 +168,17 @@ export default function ArenaGamePage() {
   const [gameStage, setGameStage] = useState<GameStage>("ready");
   const [lastRun, setLastRun] = useState<RunResult | null>(null);
 
-  const [devLoading, setDevLoading] = useState(false);
-  const [devMessage, setDevMessage] = useState<string | null>(null);
-
   const [selectedHole, setSelectedHole] = useState<number | null>(null);
-  const [revealedSafeHoles, setRevealedSafeHoles] = useState<number[]>([]);
+  const [wrongHole, setWrongHole] = useState<number | null>(null);
   const [isSurvivor, setIsSurvivor] = useState<boolean | null>(null);
   const [winnerWallet, setWinnerWallet] = useState<string | null>(null);
   const [estimatedChance, setEstimatedChance] = useState<number | null>(null);
   const [survivorEntries, setSurvivorEntries] = useState<SurvivorEntry[]>([]);
   const [myFinalPower, setMyFinalPower] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+  const [devLoading, setDevLoading] = useState(false);
+  const [devMessage, setDevMessage] = useState<string | null>(null);
 
   const { data: balanceData } = useSuiClientQuery(
     "getBalance",
@@ -194,10 +199,8 @@ export default function ArenaGamePage() {
   const totalPoolMist =
     typeof roundData?.total_pool === "number"
       ? roundData.total_pool
-      : players.reduce((sum, p) => sum + p.tickets * 100_000_000, 0);
-
+      : players.reduce((sum, p) => sum + p.tickets * TICKET_PRICE_MIST, 0);
   const totalPoolSui = totalPoolMist / 1e9;
-  const effectiveRoundId = roundData?.id || "";
 
   const myEntry = useMemo(() => {
     if (!account?.address) return null;
@@ -207,8 +210,12 @@ export default function ArenaGamePage() {
   }, [players, account?.address]);
 
   const myTickets = myEntry?.tickets ?? 0;
-  const myPaidAmount = myTickets * TICKET_PRICE_SUI;
   const myTicketMultiplier = getTicketMultiplier(myTickets);
+  const myPaidAmount = myTickets * TICKET_PRICE_SUI;
+
+  const finalPowerPreview = lastRun
+    ? Number((lastRun.score * myTicketMultiplier * SURVIVAL_BOOST).toFixed(2))
+    : 0;
 
   const isMyWin =
     !!winnerWallet &&
@@ -286,7 +293,9 @@ export default function ArenaGamePage() {
       });
 
       setDevMessage(
-        `Fake round ready. Round #${data?.roundId} now has ${data?.players?.length || 0} players.`
+        `Fake round ready. Round #${data?.roundId} now has ${
+          data?.players?.length || 0
+        } players.`
       );
     } catch (err: any) {
       console.error("fillFakeRound error:", err);
@@ -300,7 +309,7 @@ export default function ArenaGamePage() {
     setGameStage("ready");
     setLastRun(null);
     setSelectedHole(null);
-    setRevealedSafeHoles([]);
+    setWrongHole(null);
     setIsSurvivor(null);
     setWinnerWallet(null);
     setEstimatedChance(null);
@@ -313,31 +322,27 @@ export default function ArenaGamePage() {
   function handleRunComplete(result: RunResult) {
     setLastRun(result);
     setGameStage("hole_select");
-    setStatusMessage("Skill phase complete. Choose 1 of 5 holes.");
+    setStatusMessage("Skill battle complete. Choose 1 of 5 holes.");
   }
 
   function handleConfirmHole() {
     if (!selectedHole || !lastRun) return;
 
-    const safeHoles = pickSafeHoles(
-      Number(lastRun.score + myTickets * 19 + Number(effectiveRoundId || 0))
-    );
+    const roundSeed = makeSeedFromValue(roundData?.id);
+    const wrong = pickWrongHole(lastRun.score + myTickets * 17 + roundSeed);
+    const survived = selectedHole !== wrong;
 
-    const survived = safeHoles.includes(selectedHole);
-
-    setRevealedSafeHoles(safeHoles);
+    setWrongHole(wrong);
     setIsSurvivor(survived);
     setGameStage("hole_reveal");
 
     if (survived) {
-      const previewPower = Math.floor(
-        lastRun.score * myTicketMultiplier * SURVIVAL_BOOST
-      );
-
       setStatusMessage(
-        `You survived. +${SURVIVOR_SPRM} SPRM unlocked. Final Power = ${lastRun.score} × ${myTicketMultiplier.toFixed(
-          2
-        )} × ${SURVIVAL_BOOST.toFixed(1)} = ${previewPower}`
+        `You survived. +${SURVIVOR_SPRM} SPRM unlocked. Final Power = ${
+          lastRun.score
+        } × ${myTicketMultiplier.toFixed(2)} × ${SURVIVAL_BOOST.toFixed(
+          1
+        )} = ${finalPowerPreview.toFixed(2)}`
       );
     } else {
       setStatusMessage("Wrong hole. You are eliminated from the final draw.");
@@ -379,17 +384,16 @@ export default function ArenaGamePage() {
       return;
     }
 
-    const myEntry =
+    const mine =
       entries.find(
         (entry) => entry.wallet.toLowerCase() === account.address.toLowerCase()
       ) || null;
 
-    if (myEntry) {
-      setMyFinalPower(myEntry.finalPower);
-
+    if (mine) {
+      setMyFinalPower(mine.finalPower);
       const totalPower = entries.reduce((sum, e) => sum + e.finalPower, 0);
       setEstimatedChance(
-        Number(((myEntry.finalPower / totalPower) * 100).toFixed(1))
+        Number(((mine.finalPower / totalPower) * 100).toFixed(1))
       );
     } else {
       setMyFinalPower(0);
@@ -408,7 +412,7 @@ export default function ArenaGamePage() {
     return (
       <main className="space-y-6">
         <section className="rounded-[28px] border border-white/10 bg-white/5 p-6">
-          <div className="text-white/60">Loading paid arena...</div>
+          <div className="text-white/60">Loading premium arena...</div>
         </section>
       </main>
     );
@@ -429,14 +433,14 @@ export default function ArenaGamePage() {
           <div className="mt-5 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <h1 className="text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
-                Survive first. Win the pool second.
+                One wrong hole. One real winner.
               </h1>
 
               <p className="mt-4 text-sm leading-7 text-white/62 md:text-base">
-                Play the skill battle to build <span className="text-white font-semibold">Stability</span>.
-                Pick 1 of 5 holes. One hole is wrong. If you survive, your
-                Stability gets boosted into <span className="text-white font-semibold">Final Power</span>.
-                The SUI winner is drawn from surviving players only.
+                Build your <span className="font-semibold text-white">Score</span>{" "}
+                in the paid battle. Pick 1 of 5 holes. If you avoid the wrong
+                hole, you enter the final draw with{" "}
+                <span className="font-semibold text-white">Final Power</span>.
               </p>
             </div>
 
@@ -465,46 +469,60 @@ export default function ArenaGamePage() {
         </div>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+      <section className="grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
         <div className="rounded-[28px] border border-white/10 bg-white/5 p-5 md:p-6">
           <div className="text-xs uppercase tracking-[0.28em] text-fuchsia-300/70">
-            How it works
+            How the game works
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-4">
-            <SimpleStep
-              title="1. Build Stability"
-              text="Play the premium battle and finish with your Stability score."
-            />
-            <SimpleStep
-              title="2. Pick a Hole"
-              text="Choose 1 of 5 holes. Multiple players can choose the same hole."
-            />
-            <SimpleStep
-              title="3. Survive Wrong Hole"
-              text={`Survivors earn ${SURVIVOR_SPRM} SPRM and get a ${SURVIVAL_BOOST.toFixed(1)}x boost.`}
-            />
-            <SimpleStep
-              title="4. Win by Final Power"
-              text="Final winner is drawn only from survivors, weighted by Final Power."
-            />
+          <div className="mt-4 space-y-3 text-sm leading-7 text-white/68">
+            <p>
+              <span className="font-semibold text-white">Step 1:</span> Play the
+              premium skill battle and finish with your Score.
+            </p>
+            <p>
+              <span className="font-semibold text-white">Step 2:</span> Choose 1
+              out of 5 holes.
+            </p>
+            <p>
+              <span className="font-semibold text-white">Step 3:</span> One hole
+              is wrong. Anyone who picked that hole is kicked out.
+            </p>
+            <p>
+              <span className="font-semibold text-white">Step 4:</span>{" "}
+              Surviving players get <span className="text-white">1.5x</span>{" "}
+              survival boost and enter the final winner draw.
+            </p>
+            <p>
+              <span className="font-semibold text-white">Step 5:</span> Winner
+              is chosen from survivors only using Final Power.
+            </p>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-7 text-white/70">
-            <span className="font-semibold text-white">Final Power</span> = Stability × Ticket Multiplier × Survival Boost
+          <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="text-[11px] uppercase tracking-[0.22em] text-white/45">
+              Final Power
+            </div>
+            <div className="mt-2 text-lg font-black text-white">
+              Score × Ticket Multiplier × Survival Boost
+            </div>
+            <div className="mt-2 text-sm text-white/60">
+              1 ticket = 1.0x · 2 tickets = 1.1x · 3 tickets = 1.25x · Survive
+              wrong hole = 1.5x
+            </div>
           </div>
         </div>
 
         <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
           <div className="text-xs uppercase tracking-[0.28em] text-fuchsia-300/70">
-            Your Match
+            Match snapshot
           </div>
 
           <div className="mt-4 space-y-3">
             <Row label="Pool" value={`${totalPoolSui.toFixed(2)} SUI`} />
             <Row
               label="Your Tickets"
-              value={myEntry ? `${myTickets}` : "Not in round"}
+              value={myEntry ? String(myTickets) : "Not in round"}
             />
             <Row
               label="Ticket Boost"
@@ -514,10 +532,8 @@ export default function ArenaGamePage() {
               label="Survival Boost"
               value={`${SURVIVAL_BOOST.toFixed(1)}x`}
             />
-            <Row
-              label="Winner"
-              value="90% of pool"
-            />
+            <Row label="SUI Winner" value="90% of pool" />
+            <Row label="Survivor Reward" value={`${SURVIVOR_SPRM} SPRM`} />
           </div>
 
           <div className="mt-5">
@@ -527,8 +543,8 @@ export default function ArenaGamePage() {
           {account && (
             <div className="mt-4 space-y-2 text-sm text-white/70">
               <Row label="Wallet" value={shortAddress(account.address)} />
-              <Row label="SUI Balance" value={`${balance.toFixed(3)} SUI`} />
-              <Row label="Round ID" value={String(effectiveRoundId || "Current")} />
+              <Row label="Balance" value={`${balance.toFixed(3)} SUI`} />
+              <Row label="Round" value={String(roundData?.id ?? "Current")} />
             </div>
           )}
         </div>
@@ -536,7 +552,12 @@ export default function ArenaGamePage() {
 
       {process.env.NODE_ENV === "development" && (
         <section className="rounded-[24px] border border-yellow-500/30 bg-yellow-500/10 p-4">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-yellow-200">
+            <FlaskConical className="h-4 w-4" />
+            Dev test controls
+          </div>
+
+          <div className="flex flex-wrap gap-3">
             <button
               onClick={fillFakeRound}
               disabled={!account || devLoading}
@@ -574,14 +595,14 @@ export default function ArenaGamePage() {
           <StageIntro
             stage="Ready"
             title="Premium Match Ready"
-            text="Start the skill battle. When you finish, you will choose your hole and continue into the wrong-hole phase."
+            text="Start the battle. When you finish, you’ll go straight into hole selection."
           />
         ) : gameStage === "skill" ? (
           <div className="space-y-5">
             <StageIntro
               stage="Stage 1"
-              title="Build Stability"
-              text="Your paid battle score becomes your Stability. Higher Stability gives stronger Final Power if you survive."
+              title="Build Your Score"
+              text="Your paid battle score becomes the base for your Final Power if you survive the wrong-hole phase."
             />
             <GameScreen mode="paid" onRunComplete={handleRunComplete} />
           </div>
@@ -589,21 +610,32 @@ export default function ArenaGamePage() {
           <div className="space-y-5">
             <StageIntro
               stage="Stage 2"
-              title="Choose Your Hole"
-              text="Pick 1 hole. One hole is wrong. Surviving players get SPRM and enter the final weighted winner draw."
+              title="Choose 1 of 5 Holes"
+              text="One hole is wrong. If you avoid it, you survive and your Final Power becomes active."
             />
 
             {lastRun && (
               <div className="grid gap-3 sm:grid-cols-4">
-                <StatBox label="Stability" value={String(lastRun.score)} />
+                <StatBox label="Score" value={String(lastRun.score)} />
                 <StatBox label="Tickets" value={String(myTickets)} />
-                <StatBox label="Ticket Boost" value={`${myTicketMultiplier.toFixed(2)}x`} />
+                <StatBox
+                  label="Ticket Boost"
+                  value={`${myTicketMultiplier.toFixed(2)}x`}
+                />
                 <StatBox
                   label="If You Survive"
-                  value={String(Math.floor(lastRun.score * myTicketMultiplier * SURVIVAL_BOOST))}
+                  value={finalPowerPreview.toFixed(2)}
                 />
               </div>
             )}
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/68">
+              If you survive:
+              <span className="ml-2 font-semibold text-white">
+                {lastRun?.score ?? 0} × {myTicketMultiplier.toFixed(2)} ×{" "}
+                {SURVIVAL_BOOST.toFixed(1)} = {finalPowerPreview.toFixed(2)}
+              </span>
+            </div>
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
               {HOLES.map((hole) => {
@@ -612,13 +644,16 @@ export default function ArenaGamePage() {
                   <button
                     key={hole}
                     onClick={() => setSelectedHole(hole)}
-                    className={`relative overflow-hidden rounded-[28px] border p-6 text-center transition ${
+                    className={`group relative overflow-hidden rounded-[28px] border p-6 text-center transition duration-200 ${
                       active
-                        ? "border-fuchsia-400 bg-fuchsia-500/20 text-white shadow-[0_0_35px_rgba(217,70,239,0.25)]"
-                        : "border-white/10 bg-black/20 text-white/70 hover:bg-white/10"
+                        ? "border-fuchsia-400 bg-fuchsia-500/20 text-white shadow-[0_0_35px_rgba(217,70,239,0.25)] scale-[1.02]"
+                        : "border-white/10 bg-black/20 text-white/70 hover:bg-white/10 hover:border-white/20"
                     }`}
                   >
-                    <div className="text-4xl">🕳️</div>
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_60%)] opacity-60" />
+                    <div className="relative text-4xl transition group-hover:scale-110">
+                      🕳️
+                    </div>
                     <div className="mt-3 text-lg font-black">Hole {hole}</div>
                   </button>
                 );
@@ -638,31 +673,57 @@ export default function ArenaGamePage() {
             <StageIntro
               stage="Stage 3"
               title="Wrong Hole Reveal"
-              text="Safe holes survive. Survivors earn SPRM and gain a 1.5x survival boost."
+              text="Anyone who picked the wrong hole is out. Survivors earn SPRM and move to the final draw."
             />
+
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-center">
+              <div className="text-xs uppercase tracking-[0.28em] text-white/45">
+                Revealed Wrong Hole
+              </div>
+              <div className="mt-2 text-3xl font-black text-rose-300">
+                Hole {wrongHole ?? "--"}
+              </div>
+            </div>
 
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
               {HOLES.map((hole) => {
-                const safe = revealedSafeHoles.includes(hole);
-                const mine = selectedHole === hole;
+                const isWrong = wrongHole === hole;
+                const isMine = selectedHole === hole;
 
                 return (
                   <div
                     key={hole}
-                    className={`rounded-[28px] border p-6 text-center ${
-                      safe
-                        ? "border-emerald-400/30 bg-emerald-500/15"
-                        : "border-rose-400/20 bg-rose-500/10"
-                    }`}
+                    className={`relative overflow-hidden rounded-[28px] border p-6 text-center transition-all duration-500 ${
+                      isWrong
+                        ? "border-rose-400/30 bg-rose-500/15 shadow-[0_0_35px_rgba(244,63,94,0.18)] scale-[1.02]"
+                        : "border-emerald-400/30 bg-emerald-500/15 shadow-[0_0_35px_rgba(16,185,129,0.12)]"
+                    } ${isMine ? "ring-1 ring-white/20" : ""}`}
                   >
-                    <div className="text-4xl">{safe ? "✅" : "❌"}</div>
+                    <div
+                      className={`absolute inset-0 ${
+                        isWrong
+                          ? "bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.12),transparent_60%)]"
+                          : "bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.10),transparent_60%)]"
+                      }`}
+                    />
+
+                    <div className="relative text-5xl animate-pulse">
+                      {isWrong ? "💥" : "🛡️"}
+                    </div>
+
                     <div className="mt-3 text-lg font-black text-white">
                       Hole {hole}
                     </div>
-                    <div className="mt-2 text-sm text-white/70">
-                      {safe ? "Safe" : "Wrong"}
+
+                    <div
+                      className={`mt-2 text-sm font-semibold ${
+                        isWrong ? "text-rose-200" : "text-emerald-200"
+                      }`}
+                    >
+                      {isWrong ? "WRONG" : "SAFE"}
                     </div>
-                    {mine && (
+
+                    {isMine && (
                       <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs text-white">
                         Your Choice
                       </div>
@@ -692,7 +753,6 @@ export default function ArenaGamePage() {
                   </>
                 )}
               </div>
-
               <div className="mt-3 text-sm text-white/80">{statusMessage}</div>
             </div>
 
@@ -707,26 +767,36 @@ export default function ArenaGamePage() {
           <div className="space-y-5">
             <StageIntro
               stage="Stage 4"
-              title="Final Power Draw"
-              text="Only surviving players are in this draw. Winner is chosen from survivor Final Power."
+              title="Final Winner Draw"
+              text="Only survivors are in this draw. Winner is selected from survivor Final Power."
             />
 
             {lastRun && (
               <>
                 <div className="grid gap-3 sm:grid-cols-5">
-                  <StatBox label="Stability" value={String(lastRun.score)} />
+                  <StatBox label="Score" value={String(lastRun.score)} />
                   <StatBox label="Tickets" value={String(myTickets)} />
-                  <StatBox label="Ticket Boost" value={`${myTicketMultiplier.toFixed(2)}x`} />
-                  <StatBox label="Survival Boost" value={`${SURVIVAL_BOOST.toFixed(1)}x`} />
-                  <StatBox label="Final Power" value={String(myFinalPower)} />
+                  <StatBox
+                    label="Ticket Boost"
+                    value={`${myTicketMultiplier.toFixed(2)}x`}
+                  />
+                  <StatBox
+                    label="Survival Boost"
+                    value={`${SURVIVAL_BOOST.toFixed(1)}x`}
+                  />
+                  <StatBox
+                    label="Final Power"
+                    value={myFinalPower.toFixed(2)}
+                  />
                 </div>
 
                 <div className="rounded-[24px] border border-white/10 bg-black/20 p-4">
                   <div className="text-sm text-white/70">
-                    Final Power = Stability × Ticket Boost × Survival Boost
+                    Final Power = Score × Ticket Multiplier × Survival Boost
                   </div>
                   <div className="mt-2 text-lg font-bold text-white">
-                    {lastRun.score} × {myTicketMultiplier.toFixed(2)} × {SURVIVAL_BOOST.toFixed(1)} = {myFinalPower}
+                    {lastRun.score} × {myTicketMultiplier.toFixed(2)} ×{" "}
+                    {SURVIVAL_BOOST.toFixed(1)} = {myFinalPower.toFixed(2)}
                   </div>
                   <div className="mt-2 text-sm text-white/60">
                     Estimated winner chance: {estimatedChance ?? "--"}%
@@ -735,10 +805,13 @@ export default function ArenaGamePage() {
               </>
             )}
 
-            <div className="rounded-[24px] border border-fuchsia-400/20 bg-fuchsia-500/10 p-6 text-center text-white">
+            <div className="rounded-[24px] border border-fuchsia-400/20 bg-fuchsia-500/10 p-6 text-center text-white shadow-[0_0_35px_rgba(217,70,239,0.12)]">
               <div className="mx-auto flex w-fit items-center gap-2 text-xl font-black">
                 <Sparkles className="h-5 w-5 animate-pulse text-fuchsia-200" />
                 Drawing Winner...
+              </div>
+              <div className="mt-3 text-sm text-white/70">
+                Final Power decides your weighted chance.
               </div>
             </div>
           </div>
@@ -751,17 +824,26 @@ export default function ArenaGamePage() {
                 isMyWin
                   ? "You survived the wrong hole and won the final weighted draw."
                   : isSurvivor
-                  ? "You survived and earned SPRM, but did not win the SUI pool."
+                  ? "You survived, earned SPRM, but did not win the SUI pool."
                   : "You were eliminated in the wrong-hole phase."
               }
             />
 
             <div className="grid gap-3 sm:grid-cols-5">
-              {lastRun && <StatBox label="Stability" value={String(lastRun.score)} />}
+              {lastRun && <StatBox label="Score" value={String(lastRun.score)} />}
               <StatBox label="Tickets" value={String(myTickets)} />
-              <StatBox label="Survivor SPRM" value={isSurvivor ? `${SURVIVOR_SPRM}` : "0"} />
-              <StatBox label="Winner Bonus SPRM" value={isMyWin ? `${WINNER_BONUS_SPRM}` : "0"} />
-              <StatBox label="Final Power" value={String(myFinalPower)} />
+              <StatBox
+                label="Survivor SPRM"
+                value={isSurvivor ? `${SURVIVOR_SPRM}` : "0"}
+              />
+              <StatBox
+                label="Winner Bonus SPRM"
+                value={isMyWin ? `${WINNER_BONUS_SPRM}` : "0"}
+              />
+              <StatBox
+                label="Final Power"
+                value={myFinalPower.toFixed(2)}
+              />
             </div>
 
             <div
@@ -797,15 +879,6 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-4 text-sm">
       <span className="text-white/55">{label}</span>
       <span className="font-bold text-white">{value}</span>
-    </div>
-  );
-}
-
-function SimpleStep({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-      <div className="text-base font-black text-white">{title}</div>
-      <div className="mt-2 text-sm leading-6 text-white/60">{text}</div>
     </div>
   );
 }
